@@ -7,7 +7,6 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
-const ACCESS_AUDIENCE = "663855c1f54a10ad5b7138b90c58fafca854c1bdb0a338ac9c06fdbf6cb2e36a";
 const TEAM_DOMAIN = "https://dink-lounge.cloudflareaccess.com";
 const JWT_HEADER = "cf-access-jwt-assertion";
 
@@ -31,9 +30,8 @@ async function verifyAccessToken(token: string): Promise<AccessPayload | null> {
 
     const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { kid?: string };
     const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessPayload;
-    const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
     if (!header.kid || !payload.email || !payload.exp || payload.exp * 1000 <= Date.now()) return null;
-    if (!audiences.includes(ACCESS_AUDIENCE) || payload.iss !== TEAM_DOMAIN) return null;
+    if (payload.iss !== TEAM_DOMAIN) return null;
 
     const response = await fetch(`${TEAM_DOMAIN}/cdn-cgi/access/certs`, {
       cf: { cacheTtl: 3600, cacheEverything: true },
