@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { headers } from "next/headers";
 import { chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
 import AdminDashboard from "./admin-dashboard";
 
@@ -12,7 +13,9 @@ function isAdminEmail(email: string): boolean {
 export default async function AdminPage() {
   const user = await getChatGPTUser();
   if (!user) {
-    return <main className="admin-access"><div><p>Access restricted</p><h1>Cloudflare login could not be verified.</h1><span>Error code: CF-TOKEN</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try again</a></div></main>;
+    const requestHeaders = await headers();
+    const code = requestHeaders.get("cf-access-jwt-assertion") ? "CF-INVALID" : "CF-MISSING";
+    return <main className="admin-access"><div><p>Access restricted</p><h1>Cloudflare login could not be verified.</h1><span>Error code: {code}</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try again</a></div></main>;
   }
   if (!isAdminEmail(user.email)) {
     return <main className="admin-access"><div><p>Access restricted</p><h1>This email is not on the admin list.</h1><span>Error code: ADMIN-LIST</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try another account</a></div></main>;
