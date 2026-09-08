@@ -13,7 +13,7 @@
     {
       "binding": "DB",
       "database_name": "dink-lounge-bookings",
-      "database_id": "00000000-0000-4000-8000-000000000000",
+      "database_id": "3b3cdf7b-5989-416c-b0b2-1e873f2f3576",
       "migrations_dir": "drizzle"
     }
   ]
