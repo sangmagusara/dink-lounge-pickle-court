@@ -150,3 +150,24 @@ footer .brand-logo {
   .rates-head .eyebrow { margin-bottom:0; }
   .rate-grid article { min-height:auto; }
 }
+
+
+.social-buttons,
+.visit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.social-buttons {
+  margin-top: 20px;
+}
+
+.social-buttons .facebook-button {
+  margin-top: 0;
+}
+
+.visit-actions {
+  margin-top: 22px;
+}
