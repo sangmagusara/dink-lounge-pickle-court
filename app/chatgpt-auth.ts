@@ -34,7 +34,7 @@ async function verifyAccessToken(token: string): Promise<AccessPayload | null> {
     if (payload.iss?.replace(/\/$/, "") !== TEAM_DOMAIN) return null;
 
     const response = await fetch(`${TEAM_DOMAIN}/cdn-cgi/access/certs`, {
-      cf: { cacheTtl: 3600, cacheEverything: true },
+      cache: "no-store",
     });
     if (!response.ok) return null;
     const jwks = await response.json() as { keys?: JsonWebKey[] };
