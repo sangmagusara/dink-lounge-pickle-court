@@ -7,16 +7,72 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
-const USER_EMAIL_HEADER = "cf-access-authenticated-user-email";
+const ACCESS_AUDIENCE = "663855c1f54a10ad5b";
+const TEAM_DOMAIN = "https://dink-lounge.cloudflareaccess.com";
+const JWT_HEADER = "cf-access-jwt-assertion";
+
+type AccessPayload = {
+  aud?: string | string[];
+  email?: string;
+  exp?: number;
+  iss?: string;
+};
+
+function decodeBase64Url(value: string): Uint8Array {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(base64);
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+}
+
+async function verifyAccessToken(token: string): Promise<AccessPayload | null> {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { kid?: string };
+    const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessPayload;
+    const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+    if (!header.kid || !payload.email || !payload.exp || payload.exp * 1000 <= Date.now()) return null;
+    if (!audiences.includes(ACCESS_AUDIENCE) || payload.iss !== TEAM_DOMAIN) return null;
+
+    const response = await fetch(`${TEAM_DOMAIN}/cdn-cgi/access/certs`, {
+      cf: { cacheTtl: 3600, cacheEverything: true },
+    });
+    if (!response.ok) return null;
+    const jwks = await response.json() as { keys?: JsonWebKey[] };
+    const jwk = jwks.keys?.find((key) => key.kid === header.kid);
+    if (!jwk) return null;
+
+    const key = await crypto.subtle.importKey(
+      "jwk",
+      jwk,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const valid = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5",
+      key,
+      decodeBase64Url(parts[2]),
+      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+    );
+    return valid ? payload : null;
+  } catch {
+    return null;
+  }
+}
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
-  const email = requestHeaders.get(USER_EMAIL_HEADER);
-  if (!email) return null;
+  const token = requestHeaders.get(JWT_HEADER);
+  if (!token) return null;
+
+  const payload = await verifyAccessToken(token);
+  if (!payload?.email) return null;
 
   return {
-    displayName: email,
-    email,
+    displayName: payload.email,
+    email: payload.email,
     fullName: null,
   };
 }
