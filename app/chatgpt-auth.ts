@@ -7,7 +7,7 @@ export type ChatGPTUser = {
   fullName: string | null;
 };
 
-const ACCESS_AUDIENCE = "663855c1f54a10ad5b";
+const ACCESS_AUDIENCE = "663855c1f54a10ad5b7138b90c58fafca854c1bdb0a338ac9c06fdbf6cb2e36a";
 const TEAM_DOMAIN = "https://dink-lounge.cloudflareaccess.com";
 const JWT_HEADER = "cf-access-jwt-assertion";
 
