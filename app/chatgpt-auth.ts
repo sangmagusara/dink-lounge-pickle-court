@@ -60,6 +60,30 @@ async function verifyAccessToken(token: string): Promise<AccessPayload | null> {
   }
 }
 
+export async function getAccessTokenDiagnostic(): Promise<string> {
+  try {
+    const requestHeaders = await headers();
+    const token = requestHeaders.get(JWT_HEADER);
+    if (!token) return "CF-MISSING";
+    const parts = token.split(".");
+    if (parts.length !== 3) return "CF-FORMAT";
+    const tokenHeader = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { kid?: string };
+    const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessPayload;
+    if (!tokenHeader.kid || !payload.email || !payload.exp || payload.exp * 1000 <= Date.now()) return "CF-CLAIMS";
+    if (payload.iss?.replace(/\/$/, "") !== TEAM_DOMAIN) return "CF-ISSUER";
+    const response = await fetch(`${TEAM_DOMAIN}/cdn-cgi/access/certs`);
+    if (!response.ok) return "CF-CERTS";
+    const jwks = await response.json() as { keys?: JsonWebKey[] };
+    const jwk = jwks.keys?.find((key) => key.kid === tokenHeader.kid);
+    if (!jwk) return "CF-KEY";
+    const key = await crypto.subtle.importKey("jwk", jwk, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"]);
+    const valid = await crypto.subtle.verify("RSASSA-PKCS1-v1_5", key, decodeBase64Url(parts[2]), new TextEncoder().encode(`${parts[0]}.${parts[1]}`));
+    return valid ? "CF-VALID" : "CF-SIGNATURE";
+  } catch {
+    return "CF-ERROR";
+  }
+}
+
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const requestHeaders = await headers();
   const token = requestHeaders.get(JWT_HEADER);
