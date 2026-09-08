@@ -1,0 +1,152 @@
+:root {
+  --ink: #082f49;
+  --lime: #16a9ef;
+  --cream: #edf8fd;
+  --paper: #ffffff;
+  --muted: #55727a;
+  --line: #c6dde1;
+}
+
+.brand-logo {
+  width: 62px;
+  height: 54px;
+  flex: 0 0 62px;
+  border-radius: 8px;
+  border: 0;
+  object-fit: contain;
+  background: transparent;
+}
+
+.nav-wrap { box-shadow: 0 6px 28px rgba(8,47,73,.08); }
+.dark { background: #0e7189; }
+.lime { background: #16a9ef; color: #031d2d; }
+.status-dot { background: #16a9ef; }
+.hero { min-height:680px; background:#082f49; }
+.hero-image {
+  background-image: url("/nature-court.webp") !important;
+  background-position:center !important;
+  background-size:cover !important;
+  background-repeat:no-repeat !important;
+  filter:saturate(.95) contrast(1.02);
+  transform:scale(1.01);
+}
+.hero-shade { background: linear-gradient(90deg,rgba(2,26,44,.94),rgba(0,111,178,.56) 58%,rgba(0,154,230,.16)); }
+.hero-content { max-width:640px; }
+.hero h1 { font-size:clamp(58px,6.6vw,96px); text-shadow:0 3px 20px rgba(0,25,37,.2); }
+.hero-card { border-top:5px solid #16a9ef; box-shadow:0 16px 46px rgba(8,47,73,.2); }
+.hero-card strong { color:#0e7189; font-size:18px; }
+.booking-section { background: linear-gradient(180deg,#e8f6fd 0%,#f6fbfe 100%); }
+.date-tabs button.active,.more,footer { background: #082f49; }
+.slots button { background: #eaf7fe; border-color: #60c8f5; }
+.rates { padding:105px max(5vw,24px); background:linear-gradient(135deg,#031d33 0%,#086fa9 58%,#11a8ed 100%); color:white; }
+.rates-head,.rate-grid { max-width:1180px; margin:auto; }
+.rates-head { display:grid; grid-template-columns:1fr 1fr; align-items:end; gap:50px; margin-bottom:42px; }
+.rates-head .eyebrow { grid-column:1/-1; margin-bottom:-25px; color:#7dd8ff; }
+.rates-head h2 { font-size:clamp(40px,5vw,68px); line-height:.98; letter-spacing:-.055em; margin:0; }
+.rates-head>p:last-child { max-width:420px; color:#d6edf5; line-height:1.7; margin:0; }
+.rate-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.rate-grid article { padding:30px 26px; min-height:285px; background:rgba(255,255,255,.98); color:var(--ink); border-top:5px solid #16a9ef; box-shadow:0 16px 42px rgba(0,23,40,.15); }
+.rate-grid small { display:block; min-height:30px; font-size:10px; letter-spacing:.13em; color:#397282; font-weight:900; }
+.rate-grid strong { display:block; margin:22px 0 10px; color:#0873a7; font-size:44px; letter-spacing:-.05em; }
+.rate-grid h3 { font-size:20px; margin-bottom:14px; }
+.rate-grid p { color:var(--muted); line-height:1.55; font-size:14px; }
+.visual-story { padding:100px max(5vw,24px); background:linear-gradient(145deg,#ffffff 0%,#edf8fd 100%); }
+.visual-story-head { max-width:1180px; margin:0 auto 44px; display:flex; align-items:end; justify-content:space-between; gap:40px; }
+.visual-story-head h2 { max-width:660px; font-size:clamp(40px,5vw,68px); line-height:.98; letter-spacing:-.055em; margin:0; }
+.visual-story-head>p { max-width:390px; color:var(--muted); line-height:1.7; margin:0; }
+.visual-grid { max-width:1180px; margin:auto; display:grid; grid-template-columns:1.45fr .85fr; gap:18px; }
+.visual-card { position:relative; min-height:520px; overflow:hidden; background:#dcebea; border-radius:4px; box-shadow:0 18px 50px rgba(8,47,73,.12); }
+.visual-card img { width:100%; height:100%; position:absolute; inset:0; object-fit:cover; transition:transform .7s ease; }
+.visual-card:hover img { transform:scale(1.035); }
+.visual-caption { position:absolute; left:24px; right:24px; bottom:24px; padding:18px 20px; color:white; background:rgba(8,47,73,.88); backdrop-filter:blur(10px); }
+.visual-caption strong,.visual-caption small { display:block; }
+.visual-caption strong { font-size:18px; }
+.visual-caption small { margin-top:6px; color:#d9edf0; }
+.rules { padding:110px max(5vw,24px); background:#eef7f9; }
+.rules-heading { max-width:760px; margin:0 auto 45px; text-align:center; }
+.rules-heading h2 { font-size:clamp(40px,5vw,68px); line-height:.98; letter-spacing:-.055em; margin-bottom:20px; }
+.rules-heading>p:last-child { color:var(--muted); line-height:1.7; }
+.policy-list,.court-rules-list { max-width:1180px; margin:auto; }
+.policy-list>h3,.court-rules-list>h3 { margin:0 0 22px; color:#0873a7; font-size:25px; }
+.policy-cards { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.policy-cards article { display:grid; grid-template-columns:42px minmax(0,1fr); align-items:start; gap:18px; padding:27px; background:white; border-top:4px solid #16a9ef; box-shadow:0 12px 34px rgba(8,47,73,.08); }
+.policy-cards article:last-child { grid-column:1/-1; }
+.policy-cards article>span,.court-rule-grid article>span { display:grid; place-items:center; align-self:start; width:42px; height:42px; border-radius:50%; background:#e2f3f7; color:#0873a7; font-size:13px; font-weight:900; }
+.policy-cards h4,.court-rule-grid h4 { margin:0 0 13px; min-height:42px; display:flex; align-items:center; font-size:18px; text-transform:capitalize; }
+.policy-cards ul { margin:0; padding-left:18px; color:var(--muted); }
+.policy-cards li { margin:0 0 9px; line-height:1.55; }
+.policy-cards li:last-child { margin-bottom:0; }
+.court-rules-list { margin-top:70px; }
+.court-rule-grid { display:grid; grid-template-columns:1fr 1fr; gap:1px; border:1px solid var(--line); background:var(--line); }
+.court-rule-grid article { display:grid; grid-template-columns:42px minmax(0,1fr); align-items:start; gap:18px; padding:24px; background:#ffffff; }
+.court-rule-grid article>span { background:#082f49; color:#55c8ff; }
+.court-rule-grid h4 { margin-bottom:8px; }
+.court-rule-grid p { margin:0; color:var(--muted); line-height:1.55; font-size:15px; }
+.contact-lines { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 28px; }
+.contact-lines a { display:inline-flex; align-items:center; gap:8px; padding:11px 14px; background:#e7f5f8; color:#082f49; text-decoration:none; font-weight:800; border-radius:4px; }
+.contact-lines svg { width:17px; height:17px; color:#0873a7; }
+.rental-options { display:grid; gap:10px; margin:18px 0; padding:16px; background:#eef7f9; }
+.rental-options label { display:flex; align-items:center; gap:8px; font-size:13px; }
+.booking-error { margin:14px 0 0; padding:12px 14px; background:#fff0f0; border-left:4px solid #cf3030; color:#8b1d1d; font-size:14px; line-height:1.5; }
+.booking-success h2 { margin-bottom:20px; }
+.confirmation-note { display:grid; grid-template-columns:34px 1fr; gap:13px; align-items:start; margin:18px 0; padding:16px; background:#e7f6fd; color:#074b72; }
+.confirmation-note svg { width:28px; height:28px; }
+.confirmation-note strong,.confirmation-note span { display:block; }
+.confirmation-note span { margin-top:5px; font-size:14px; line-height:1.5; }
+.calendar-top button:disabled { opacity:.3; cursor:not-allowed; }
+.full:disabled { opacity:.65; cursor:wait; }
+.payment-section { padding:105px max(5vw,24px); background:linear-gradient(135deg,#031d33 0%,#064d78 58%,#0876a8 100%); color:white; display:grid; grid-template-columns:minmax(0,650px) minmax(320px,430px); justify-content:center; gap:72px; align-items:center; }
+.payment-copy { width:100%; max-width:650px; justify-self:stretch; }
+.payment-copy h2 { font-size:clamp(42px,5vw,72px); line-height:.96; letter-spacing:-.055em; margin-bottom:26px; }
+.payment-copy>p:not(.eyebrow) { color:#dceff5; font-size:17px; line-height:1.7; max-width:580px; }
+.payment-copy>small { display:block; color:#c8e3e9; font-size:13px; line-height:1.6; max-width:520px; }
+.payment-contacts { display:flex; flex-wrap:wrap; gap:10px; margin:25px 0 22px; }
+.payment-contacts a { display:inline-flex; align-items:center; gap:8px; padding:12px 14px; background:white; color:#082f49; text-decoration:none; font-weight:900; border-radius:4px; }
+.payment-contacts svg { width:17px; height:17px; color:#0873a7; }
+.qr-card { background:#f8fcfe; color:var(--ink); padding:22px; border:1px solid rgba(255,255,255,.5); border-radius:10px; box-shadow:0 24px 64px rgba(0,20,38,.24); text-align:center; }
+.qr-card img { display:block; width:100%; max-height:560px; object-fit:contain; object-position:center; border-radius:7px; }
+.qr-card strong,.qr-card span { display:block; }
+.qr-card strong { margin-top:18px; font-size:17px; }
+.qr-card span { margin-top:7px; color:var(--muted); font-size:13px; }
+.qr-preview { display:grid; grid-template-columns:145px 1fr; gap:18px; align-items:center; border-style:solid; background:#eef7f9; }
+.qr-preview img { width:145px; height:145px; object-fit:contain; object-position:center; border-radius:4px; }
+.qr-preview div { display:grid; gap:7px; }
+.qr-preview strong,.qr-preview small { display:block; }
+.map-embed { height:390px; overflow:hidden; background:#dbecef; border:1px solid var(--line); box-shadow:0 18px 50px rgba(8,47,73,.12); }
+.map-embed iframe { display:block; width:100%; height:100%; border:0; }
+
+/* Blue-first brand accents and consistently aligned numbered content. */
+.eyebrow { color:#0873a7; }
+.eyebrow.light { color:#72d2ff; }
+.selection { background:#e7f6fd; }
+.booking-timer { border-left-color:#16a9ef; }
+.booking-timer span { color:#72d2ff; }
+.admin-header,.admin-access { background:#031d33; }
+.booking-actions .verify,.admin-access a { background:#16a9ef; color:#031d33; }
+.status.paid { background:#e4f5fd; color:#075c87; }
+.policy-cards article>div,.court-rule-grid article>div { min-width:0; }
+.policy-cards li::marker { color:#0873a7; }
+
+footer .brand-logo {
+  border-color: #8dc7d5;
+}
+
+@media (max-width: 800px) {
+  .brand-logo {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+  .visual-story-head,.visual-grid { display:grid; grid-template-columns:1fr; }
+  .visual-card { min-height:360px; }
+  .rates-head,.rate-grid,.policy-cards,.court-rule-grid { grid-template-columns:1fr; }
+  .policy-cards article:last-child { grid-column:auto; }
+  .policy-cards article,.court-rule-grid article { padding:21px 18px; }
+  .payment-section { grid-template-columns:1fr; gap:40px; }
+  .payment-copy { justify-self:start; }
+  .qr-card { width:min(100%,430px); justify-self:center; }
+  .qr-preview { grid-template-columns:1fr; }
+  .qr-preview img { width:100%; height:auto; max-width:300px; justify-self:center; }
+  .rates-head .eyebrow { margin-bottom:0; }
+  .rate-grid article { min-height:auto; }
+}
