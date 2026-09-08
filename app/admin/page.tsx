@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { chatGPTSignOutPath, getAccessTokenDiagnostic, getChatGPTUser } from "../chatgpt-auth";
+import { chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
 import AdminDashboard from "./admin-dashboard";
 
 export const dynamic = "force-dynamic";
