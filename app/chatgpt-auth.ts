@@ -31,7 +31,7 @@ async function verifyAccessToken(token: string): Promise<AccessPayload | null> {
     const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { kid?: string };
     const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as AccessPayload;
     if (!header.kid || !payload.email || !payload.exp || payload.exp * 1000 <= Date.now()) return null;
-    if (payload.iss !== TEAM_DOMAIN) return null;
+    if (payload.iss?.replace(/\/$/, "") !== TEAM_DOMAIN) return null;
 
     const response = await fetch(`${TEAM_DOMAIN}/cdn-cgi/access/certs`, {
       cf: { cacheTtl: 3600, cacheEverything: true },
