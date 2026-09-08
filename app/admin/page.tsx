@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { chatGPTSignOutPath, getAccessTokenDiagnostic, getChatGPTUser } from "../chatgpt-auth";
+import { chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
 import AdminDashboard from "./admin-dashboard";
 
 export const dynamic = "force-dynamic";
@@ -12,8 +12,7 @@ function isAdminEmail(email: string): boolean {
 export default async function AdminPage() {
   const user = await getChatGPTUser();
   if (!user) {
-    const code = await getAccessTokenDiagnostic();
-    return <main className="admin-access"><div><p>Access restricted</p><h1>Cloudflare login could not be verified.</h1><span>Error code: {code}</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try again</a></div></main>;
+    return <main className="admin-access"><div><p>Access restricted</p><h1>Cloudflare login could not be verified.</h1><span>Please sign in using an approved Dink Lounge management email.</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try again</a></div></main>;
   }
   if (!isAdminEmail(user.email)) {
     return <main className="admin-access"><div><p>Access restricted</p><h1>This email is not on the admin list.</h1><span>Error code: ADMIN-LIST</span><a href={chatGPTSignOutPath("/admin")} target="_top">Sign out and try another account</a></div></main>;
