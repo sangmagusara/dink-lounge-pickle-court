@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const to = url.searchParams.get("to") || from;
     const now = Date.now();
     await env.DB.prepare("DELETE FROM bookings WHERE status = ? AND expires_at <= ?").bind("pending_payment", now).run();
-    const result = await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE booking_date BETWEEN ? AND ? ORDER BY booking_date, court, start_time").bind(from, to).all();
+    const result = await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE status != 'cancelled' AND booking_date BETWEEN ? AND ? ORDER BY booking_date, court, start_time").bind(from, to).all();
     const bookings=(result.results as Array<{booking_date:string;court:string;start_time:string;status:string}>).flatMap((item)=>String(item.start_time).split("|").map((start_time)=>({...item,start_time})));
     return json({ bookings });
   } catch (error) {
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     const amount = 200 * durationHours + (paddleRental ? 100 : 0) + (ballRental ? 20 : 0) + (trainingBalls ? 150 : 0);
     const removeExpired = env.DB.prepare("DELETE FROM bookings WHERE status = ? AND expires_at <= ?").bind("pending_payment", now);
     const overlapChecks = startTimes.map(()=>"instr('|' || start_time || '|', '|' || ? || '|') > 0").join(" OR ");
-    const insert = env.DB.prepare(`INSERT INTO bookings (id, booking_date, court, start_time, customer_name, phone, email, players, paddle_rental, ball_rental, training_balls, amount, status, created_at, expires_at) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM bookings WHERE booking_date = ? AND court = ? AND (${overlapChecks}))`).bind(id, bookingDate, court, storedStartTime, customerName, phone, email, players, paddleRental ? 1 : 0, ballRental ? 1 : 0, trainingBalls ? 1 : 0, amount, "pending_payment", now, expiresAt, bookingDate, court, ...startTimes);
+    const insert = env.DB.prepare(`INSERT INTO bookings (id, booking_date, court, start_time, customer_name, phone, email, players, paddle_rental, ball_rental, training_balls, amount, status, created_at, expires_at) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM bookings WHERE booking_date = ? AND court = ? AND status != 'cancelled' AND (${overlapChecks}))`).bind(id, bookingDate, court, storedStartTime, customerName, phone, email, players, paddleRental ? 1 : 0, ballRental ? 1 : 0, trainingBalls ? 1 : 0, amount, "pending_payment", now, expiresAt, bookingDate, court, ...startTimes);
     const results = await env.DB.batch([removeExpired, insert]);
     if (!results[1].meta.changes) return json({ error: "One or more of those hours have just been booked. Please choose another time." }, 409);
     return json({ booking: { id, bookingDate, court, startTime: storedStartTime, startTimes, durationHours, amount, status: "pending_payment", expiresAt } }, 201);
