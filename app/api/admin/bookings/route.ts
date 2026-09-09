@@ -170,6 +170,35 @@ export async function PATCH(request: Request) {
       return json({ ok: true });
     }
 
+    if (action === "restore") {
+      const booking = await env.DB.prepare("SELECT booking_date, court, start_time FROM bookings WHERE id = ? AND status = ?").bind(id, "cancelled").first<{booking_date:string;court:string;start_time:string}>();
+      const event = await env.DB.prepare("SELECT id, previous_status FROM booking_events WHERE booking_id = ? AND action = ? AND undone_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(id, "cancel").first<{id:number;previous_status:string}>();
+      if (!booking || !event) return json({ error: "This cancelled booking could not be restored." }, 404);
+      const restoreTimes = booking.start_time.split("|");
+      const checks = restoreTimes.map(() => "instr('|' || start_time || '|', '|' || ? || '|') > 0").join(" OR ");
+      const conflict = await env.DB.prepare(`SELECT id FROM bookings WHERE booking_date = ? AND court = ? AND id != ? AND status != 'cancelled' AND (${checks}) LIMIT 1`).bind(booking.booking_date, booking.court, id, ...restoreTimes).first();
+      if (conflict) return json({ error: "The original time is no longer available, so this booking cannot be restored." }, 409);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE bookings SET status = ?, expires_at = ? WHERE id = ?").bind(event.previous_status || "payment_submitted", Date.now() + 90 * 24 * 60 * 60 * 1000, id),
+        env.DB.prepare("UPDATE booking_events SET undone_at = ? WHERE id = ?").bind(Date.now(), event.id)
+      ]);
+      return json({ ok: true });
+    }
+
+    if (action === "undo_reschedule") {
+      const event = await env.DB.prepare("SELECT id, previous_date, previous_court, previous_start_time FROM booking_events WHERE booking_id = ? AND action = ? AND undone_at IS NULL ORDER BY created_at DESC LIMIT 1").bind(id, "reschedule").first<{id:number;previous_date:string;previous_court:string;previous_start_time:string}>();
+      if (!event) return json({ error: "No reschedule history was found for this booking." }, 404);
+      const oldTimes = event.previous_start_time.split("|");
+      const checks = oldTimes.map(() => "instr('|' || start_time || '|', '|' || ? || '|') > 0").join(" OR ");
+      const conflict = await env.DB.prepare(`SELECT id FROM bookings WHERE booking_date = ? AND court = ? AND id != ? AND status != 'cancelled' AND (${checks}) LIMIT 1`).bind(event.previous_date, event.previous_court, id, ...oldTimes).first();
+      if (conflict) return json({ error: "The previous time is no longer available, so this reschedule cannot be undone." }, 409);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(event.previous_date, event.previous_court, event.previous_start_time, id),
+        env.DB.prepare("UPDATE booking_events SET undone_at = ? WHERE id = ?").bind(Date.now(), event.id)
+      ]);
+      return json({ ok: true });
+    }
+
     return json({ error: "Unknown booking action." }, 400);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
