@@ -42,7 +42,7 @@ const courtRules=[
 export default function Home(){
  const[pageLoading,setPageLoading]=useState(true),[date,setDate]=useState(0),[slot,setSlot]=useState<string|null>(null),[booking,setBooking]=useState(false),[menu,setMenu]=useState(false),[weekOffset,setWeekOffset]=useState(0),[reserved,setReserved]=useState<string[]>([]),[availabilityLoading,setAvailabilityLoading]=useState(true),[saving,setSaving]=useState(false),[confirmingPayment,setConfirmingPayment]=useState(false),[paymentSubmitted,setPaymentSubmitted]=useState(false),[clock,setClock]=useState(Date.now()),[currentTime,setCurrentTime]=useState(Date.now()),[bookingError,setBookingError]=useState(""),[confirmation,setConfirmation]=useState<{id:string;amount:number;expiresAt:number;bookingDate:string;court:string;startTime:string}|null>(null);
  const dates=useMemo(()=>buildDates(weekOffset),[weekOffset]);
- useEffect(()=>{const timer=window.setTimeout(()=>setPageLoading(false),700);return()=>window.clearTimeout(timer)},[]);
+ useEffect(()=>{const timer=window.setTimeout(()=>setPageLoading(false),1000);return()=>window.clearTimeout(timer)},[]);
  const loadAvailability=async()=>{setAvailabilityLoading(true);try{const response=await fetch(`/api/bookings?from=${dates[0][3]}&to=${dates[dates.length-1][3]}`,{cache:"no-store"});const data=await response.json();if(response.ok)setReserved(data.bookings.map((item:{booking_date:string;court:string;start_time:string})=>`${item.booking_date}|${item.court}|${item.start_time}`))}finally{setAvailabilityLoading(false)}};
  useEffect(()=>{loadAvailability()},[dates]);
  useEffect(()=>{const timer=window.setInterval(()=>setCurrentTime(Date.now()),30000);return()=>window.clearInterval(timer)},[]);
