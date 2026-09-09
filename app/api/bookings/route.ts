@@ -3,6 +3,19 @@ import { env } from "cloudflare:workers";
 const launchDate = "2026-09-09";
 const validTimes = new Set(["6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"]);
 
+function slotHasEndedInManila(bookingDate: string, startTime: string, now: number) {
+  const manila = new Date(now + 8 * 60 * 60 * 1000);
+  const today = manila.toISOString().slice(0, 10);
+  if (bookingDate < today) return true;
+  if (bookingDate > today) return false;
+  const match = startTime.match(/^(\d+):(\d+) (AM|PM)$/);
+  if (!match) return false;
+  let hour = Number(match[1]) % 12;
+  if (match[3] === "PM") hour += 12;
+  const slotEnd = hour * 60 + Number(match[2]) + 60;
+  return manila.getUTCHours() * 60 + manila.getUTCMinutes() >= slotEnd;
+}
+
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -43,6 +56,9 @@ export async function POST(request: Request) {
     }
 
     const now = Date.now();
+    if (slotHasEndedInManila(bookingDate, startTime, now)) {
+      return json({ error: "That time slot has already passed. Please choose another time." }, 409);
+    }
     const expiresAt = now + 15 * 60 * 1000;
     const id = crypto.randomUUID();
     const amount = 200 + (paddleRental ? 100 : 0) + (ballRental ? 20 : 0) + (trainingBalls ? 150 : 0);
