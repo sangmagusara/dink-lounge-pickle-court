@@ -33,3 +33,16 @@
 .admin-confirm{width:min(540px,100%);padding:38px;text-align:center;background:#087db2;color:#fff;border:1px solid #64cdf7;box-shadow:0 24px 80px #00111dcc}
 .admin-confirm .confirm-icon{display:grid;place-items:center;width:70px;height:70px;margin:0 auto 18px;background:#fff;color:#087db2;border-radius:50%}.admin-confirm .confirm-icon svg{width:36px;height:36px}.admin-confirm>p{margin:0 0 10px;font-size:11px;font-weight:900;letter-spacing:.2em;color:#c5eeff}.admin-confirm h2{margin:0 0 14px;font-size:clamp(28px,5vw,42px);line-height:1.05;color:#fff}.admin-confirm>span:not(.confirm-icon){display:block;max-width:440px;margin:0 auto;color:#e6f7ff;font-size:16px;line-height:1.6}.admin-confirm>div{display:grid;grid-template-columns:1fr 1.35fr;gap:10px;margin-top:28px}.admin-confirm button{min-height:52px;padding:13px 17px;border:0;font-size:14px;font-weight:900}.confirm-back{background:#d9f2fc;color:#08334a}.confirm-proceed{background:#caf56c;color:#092f43}.confirm-proceed.danger{background:#ffe0e0;color:#a51d1d}
 @media(max-width:650px){.admin-date-filter{top:8px;align-items:stretch;flex-direction:column}.admin-date-filter label{align-items:stretch;flex-direction:column;gap:5px}.admin-date-filter input,.admin-date-filter button{width:100%}.admin-confirm{padding:30px 22px}.admin-confirm>div{grid-template-columns:1fr}.admin-confirm .confirm-back{order:2}}
+
+
+/* Dashboard history tabs */
+.admin-tabs{display:flex;gap:8px;margin:0 0 22px;border-bottom:1px solid #cbdde5}
+.admin-tabs button{display:flex;align-items:center;gap:8px;padding:13px 18px;border:1px solid #cbdde5;border-bottom:0;background:#fff;color:#54707f;font-weight:900}
+.admin-tabs button.active{background:#087db2;border-color:#087db2;color:#fff}
+.admin-tabs button span{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:#e5f3f9;color:#087db2;font-size:11px}
+.admin-tabs button.active span{background:#fff;color:#087db2}
+.status.cancelled{background:#ffe4e4;color:#9b1c1c}
+.reschedule-history{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 16px;padding:13px 16px;background:#e8f5fb;border-left:4px solid #087db2}
+.reschedule-history small{font-size:10px;font-weight:900;letter-spacing:.12em;color:#087db2}.reschedule-history strong{text-align:right}
+.booking-actions .restore{background:#caf56c;color:#0d2b3d}.booking-actions .undo{background:#dff1ff;color:#075c87}
+@media(max-width:650px){.admin-tabs{display:grid;grid-template-columns:1fr}.admin-tabs button{justify-content:space-between;border-bottom:1px solid #cbdde5}.reschedule-history{align-items:flex-start;flex-direction:column}.reschedule-history strong{text-align:left}}
