@@ -15,6 +15,73 @@ async function authorised() {
   return Boolean(user && allowed.includes(user.email.toLowerCase()));
 }
 
+type BookingForEmail = {
+  id: string;
+  booking_date: string;
+  court: string;
+  start_time: string;
+  customer_name: string;
+  email: string;
+  amount: number;
+};
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[character] || character);
+}
+
+function displayTimeRange(value: string) {
+  const selected = value.split("|");
+  if (selected.length === 1) {
+    const startIndex = orderedTimes.indexOf(selected[0]);
+    return startIndex >= 0 && startIndex + 1 < orderedTimes.length
+      ? `${selected[0]}–${orderedTimes[startIndex + 1]}`
+      : selected[0];
+  }
+  const startIndex = orderedTimes.indexOf(selected[0]);
+  const endHour = (6 + startIndex + selected.length) % 24;
+  return `${selected[0]}–${endHour % 12 || 12}:00 ${endHour < 12 ? "AM" : "PM"}`;
+}
+
+function displayBookingDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-PH", {
+    timeZone: "Asia/Manila",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+async function sendVerificationEmail(booking: BookingForEmail) {
+  const apiKey = String((env as unknown as { RESEND_API_KEY?: string }).RESEND_API_KEY || "");
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "Dink Lounge Pickle Court <bookings@dinkloungepicklecourt.com>",
+      to: [booking.email],
+      reply_to: "dinklounge@gmail.com",
+      subject: "Payment verified — Dink Lounge Pickle Court",
+      html: `<!doctype html><html><body style="margin:0;background:#eef7fb;font-family:Arial,sans-serif;color:#082c41"><div style="max-width:600px;margin:0 auto;padding:32px 18px"><div style="background:#06283d;padding:24px;color:#fff"><div style="color:#27b2ec;font-size:13px;font-weight:700;letter-spacing:2px">DINK LOUNGE PICKLE COURT</div><h1 style="margin:12px 0 0;font-size:30px">Payment verified!</h1></div><div style="background:#fff;padding:28px;border:1px solid #cfe2eb"><p style="font-size:18px;margin-top:0">Hi ${escapeHtml(booking.customer_name)},</p><p>Your payment has been verified and your court booking is confirmed.</p><div style="background:#eef7fb;padding:20px;margin:24px 0"><p style="margin:0 0 10px"><strong>Date:</strong> ${escapeHtml(displayBookingDate(booking.booking_date))}</p><p style="margin:0 0 10px"><strong>Time:</strong> ${escapeHtml(displayTimeRange(booking.start_time))}</p><p style="margin:0 0 10px"><strong>Court:</strong> ${escapeHtml(booking.court)}</p><p style="margin:0 0 10px"><strong>Amount paid:</strong> ₱${Number(booking.amount).toLocaleString("en-PH")}</p><p style="margin:0"><strong>Booking reference:</strong> ${escapeHtml(booking.id)}</p></div><p>We look forward to seeing you on court!</p><p style="margin-bottom:0"><strong>Dink Lounge Pickle Court</strong><br>Purok 6, Anahawon, Maramag, Bukidnon<br>0966 168 0764 · 0960 854 0792</p></div></div></body></html>`,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Resend returned ${response.status}: ${await response.text()}`);
+  }
+}
+
 export async function GET() {
   if (!(await authorised())) return json({ error: "Not authorised." }, 403);
   const now = Date.now();
@@ -32,10 +99,22 @@ export async function PATCH(request: Request) {
     if (!id) return json({ error: "Booking reference is required." }, 400);
 
     if (action === "verify") {
+      const booking = await env.DB.prepare(
+        "SELECT id, booking_date, court, start_time, customer_name, email, amount FROM bookings WHERE id = ?"
+      ).bind(id).first<BookingForEmail>();
+      if (!booking) return json({ error: "Booking was not found." }, 404);
+
       const result = await env.DB.prepare("UPDATE bookings SET status = ?, expires_at = ? WHERE id = ? AND status IN (?, ?)")
         .bind("paid", Date.now() + 365 * 24 * 60 * 60 * 1000, id, "payment_submitted", "pending_payment").run();
       if (!result.meta.changes) return json({ error: "Booking could not be verified." }, 409);
-      return json({ ok: true });
+
+      try {
+        await sendVerificationEmail(booking);
+        return json({ ok: true, emailSent: true });
+      } catch (emailError) {
+        console.error("Payment verified, but confirmation email failed", emailError);
+        return json({ ok: true, emailSent: false });
+      }
     }
 
     if (action === "cancel") {
