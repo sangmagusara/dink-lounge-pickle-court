@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     const now = Date.now();
     await env.DB.prepare("DELETE FROM bookings WHERE status = ? AND expires_at <= ?").bind("pending_payment", now).run();
     const result = await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE booking_date BETWEEN ? AND ? ORDER BY booking_date, court, start_time").bind(from, to).all();
-    const bookings=result.results.flatMap((item)=>String(item.start_time).split("|").map((start_time)=>({...item,start_time})));
+    const bookings=(result.results as Array<{booking_date:string;court:string;start_time:string;status:string}>).flatMap((item)=>String(item.start_time).split("|").map((start_time)=>({...item,start_time})));
     return json({ bookings });
   } catch (error) {
     console.error("Availability load failed", error);
