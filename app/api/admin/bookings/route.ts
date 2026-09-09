@@ -23,6 +23,9 @@ type BookingForEmail = {
   customer_name: string;
   email: string;
   amount: number;
+  paddle_rental: number;
+  ball_rental: number;
+  training_balls: number;
 };
 
 function escapeHtml(value: string) {
@@ -62,6 +65,15 @@ async function sendVerificationEmail(booking: BookingForEmail) {
   const apiKey = String((env as unknown as { RESEND_API_KEY?: string }).RESEND_API_KEY || "");
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
+  const hours = booking.start_time.split("|").length;
+  const items = [
+    { label: `Court rental (${hours} ${hours === 1 ? "hour" : "hours"} × ₱200)`, amount: hours * 200 },
+    ...(booking.paddle_rental ? [{ label: "Paddle rental", amount: 100 }] : []),
+    ...(booking.ball_rental ? [{ label: "Ball rental", amount: 20 }] : []),
+    ...(booking.training_balls ? [{ label: "100-ball training set", amount: 150 }] : []),
+  ];
+  const breakdownRows = items.map((item) => `<tr><td style="padding:9px 0;border-bottom:1px solid #d7e6ed">${escapeHtml(item.label)}</td><td style="padding:9px 0;border-bottom:1px solid #d7e6ed;text-align:right;font-weight:700">₱${item.amount.toLocaleString("en-PH")}</td></tr>`).join("");
+
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -73,7 +85,7 @@ async function sendVerificationEmail(booking: BookingForEmail) {
       to: [booking.email],
       reply_to: "dinklounge@gmail.com",
       subject: "Payment verified — Dink Lounge Pickle Court",
-      html: `<!doctype html><html><body style="margin:0;background:#eef7fb;font-family:Arial,sans-serif;color:#082c41"><div style="max-width:600px;margin:0 auto;padding:32px 18px"><div style="background:#06283d;padding:24px;color:#fff"><div style="color:#27b2ec;font-size:13px;font-weight:700;letter-spacing:2px">DINK LOUNGE PICKLE COURT</div><h1 style="margin:12px 0 0;font-size:30px">Payment verified!</h1></div><div style="background:#fff;padding:28px;border:1px solid #cfe2eb"><p style="font-size:18px;margin-top:0">Hi ${escapeHtml(booking.customer_name)},</p><p>Your payment has been verified and your court booking is confirmed.</p><div style="background:#eef7fb;padding:20px;margin:24px 0"><p style="margin:0 0 10px"><strong>Date:</strong> ${escapeHtml(displayBookingDate(booking.booking_date))}</p><p style="margin:0 0 10px"><strong>Time:</strong> ${escapeHtml(displayTimeRange(booking.start_time))}</p><p style="margin:0 0 10px"><strong>Court:</strong> ${escapeHtml(booking.court)}</p><p style="margin:0 0 10px"><strong>Amount paid:</strong> ₱${Number(booking.amount).toLocaleString("en-PH")}</p><p style="margin:0"><strong>Booking reference:</strong> ${escapeHtml(booking.id.slice(0, 8).toUpperCase())}</p></div><p>We look forward to seeing you on court!</p><p style="margin-bottom:0"><strong>Dink Lounge Pickle Court</strong><br>Purok 6, Anahawon, Maramag, Bukidnon<br>0966 168 0764 · 0960 854 0792</p></div></div></body></html>`,
+      html: `<!doctype html><html><body style="margin:0;background:#eef7fb;font-family:Arial,sans-serif;color:#082c41"><div style="max-width:600px;margin:0 auto;padding:32px 18px"><div style="background:#06283d;padding:24px;color:#fff"><div style="color:#27b2ec;font-size:13px;font-weight:700;letter-spacing:2px">DINK LOUNGE PICKLE COURT</div><h1 style="margin:12px 0 0;font-size:30px">Payment verified!</h1></div><div style="background:#fff;padding:28px;border:1px solid #cfe2eb"><p style="font-size:18px;margin-top:0">Hi ${escapeHtml(booking.customer_name)},</p><p>Your payment has been verified and your court booking is confirmed.</p><div style="background:#eef7fb;padding:20px;margin:24px 0"><p style="margin:0 0 10px"><strong>Date:</strong> ${escapeHtml(displayBookingDate(booking.booking_date))}</p><p style="margin:0 0 10px"><strong>Time:</strong> ${escapeHtml(displayTimeRange(booking.start_time))}</p><p style="margin:0 0 10px"><strong>Court:</strong> ${escapeHtml(booking.court)}</p><p style="margin:0 0 10px"><strong>Amount paid:</strong> ₱${Number(booking.amount).toLocaleString("en-PH")}</p><p style="margin:0"><strong>Booking reference:</strong> ${escapeHtml(booking.id.slice(0, 8).toUpperCase())}</p></div><div style="margin:24px 0"><h2 style="margin:0 0 10px;font-size:18px;color:#082c41">Booking breakdown</h2><table role="presentation" style="width:100%;border-collapse:collapse;font-size:14px"><tbody>${breakdownRows}<tr><td style="padding:12px 0;font-weight:700">Total paid</td><td style="padding:12px 0;text-align:right;font-size:17px;font-weight:700;color:#087db2">₱${Number(booking.amount).toLocaleString("en-PH")}</td></tr></tbody></table></div><p>We look forward to seeing you on court!</p><p style="margin-bottom:0"><strong>Dink Lounge Pickle Court</strong><br>Purok 6, Anahawon, Maramag, Bukidnon<br>0966 168 0764 · 0960 854 0792</p></div></div></body></html>`,
     }),
   });
 
@@ -100,7 +112,7 @@ export async function PATCH(request: Request) {
 
     if (action === "verify") {
       const booking = await env.DB.prepare(
-        "SELECT id, booking_date, court, start_time, customer_name, email, amount FROM bookings WHERE id = ?"
+        "SELECT id, booking_date, court, start_time, customer_name, email, amount, paddle_rental, ball_rental, training_balls FROM bookings WHERE id = ?"
       ).bind(id).first<BookingForEmail>();
       if (!booking) return json({ error: "Booking was not found." }, 404);
 
