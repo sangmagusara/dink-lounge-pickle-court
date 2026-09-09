@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../../../chatgpt-auth";
 
-const validTimes = new Set(["6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"]);
+const orderedTimes = ["6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM","10:00 PM","11:00 PM"];
+const validTimes = new Set(orderedTimes);
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
@@ -51,7 +52,16 @@ export async function PATCH(request: Request) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || bookingDate < todayInManila || !["Court 1", "Court 2"].includes(court) || !validTimes.has(startTime)) {
         return json({ error: "Please choose a valid date, court and time." }, 400);
       }
-      await env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(bookingDate, court, startTime, id).run();
+      const current=await env.DB.prepare("SELECT start_time FROM bookings WHERE id = ?").bind(id).first<{start_time:string}>();
+      if(!current)return json({error:"Booking was not found."},404);
+      const duration=String(current.start_time).split("|").length;
+      const startIndex=orderedTimes.indexOf(startTime);
+      const newTimes=orderedTimes.slice(startIndex,startIndex+duration);
+      if(newTimes.length!==duration)return json({error:"This booking would extend past closing time."},400);
+      const overlapChecks=newTimes.map(()=>"instr('|' || start_time || '|', '|' || ? || '|') > 0").join(" OR ");
+      const conflict=await env.DB.prepare(`SELECT id FROM bookings WHERE booking_date = ? AND court = ? AND id != ? AND (${overlapChecks}) LIMIT 1`).bind(bookingDate,court,id,...newTimes).first();
+      if(conflict)return json({error:"One or more hours in that time range are already reserved."},409);
+      await env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(bookingDate, court, newTimes.join("|"), id).run();
       return json({ ok: true });
     }
 
