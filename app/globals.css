@@ -46,3 +46,12 @@
 .reschedule-history small{font-size:10px;font-weight:900;letter-spacing:.12em;color:#087db2}.reschedule-history strong{text-align:right}
 .booking-actions .restore{background:#caf56c;color:#0d2b3d}.booking-actions .undo{background:#dff1ff;color:#075c87}
 @media(max-width:650px){.admin-tabs{display:grid;grid-template-columns:1fr}.admin-tabs button{justify-content:space-between;border-bottom:1px solid #cbdde5}.reschedule-history{align-items:flex-start;flex-direction:column}.reschedule-history strong{text-align:left}}
+
+
+/* Dashboard history tabs cache refresh v2 */
+.admin-content .admin-tabs{display:flex!important;align-items:stretch;gap:10px!important;margin:0 0 24px!important;padding:0!important;border:0!important;background:transparent!important}
+.admin-content .admin-tabs>button{appearance:none;display:flex!important;align-items:center;justify-content:center;gap:10px;min-width:170px;min-height:52px;padding:13px 20px!important;border:1px solid #b8d5e2!important;background:#fff!important;color:#0d5678!important;font-size:15px;font-weight:900;cursor:pointer}
+.admin-content .admin-tabs>button.active{background:#087db2!important;border-color:#087db2!important;color:#fff!important;box-shadow:0 7px 20px #087db233}
+.admin-content .admin-tabs>button>span{display:inline-grid!important;place-items:center;min-width:26px;height:26px;padding:0 7px;border-radius:14px;background:#dff1f9!important;color:#087db2!important;font-size:12px}
+.admin-content .admin-tabs>button.active>span{background:#fff!important;color:#087db2!important}
+@media(max-width:650px){.admin-content .admin-tabs{display:grid!important;grid-template-columns:1fr!important}.admin-content .admin-tabs>button{width:100%;min-width:0;justify-content:space-between}}
