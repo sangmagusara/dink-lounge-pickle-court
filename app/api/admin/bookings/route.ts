@@ -8,6 +8,10 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+async function ensureBookingHistory() {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS booking_events (id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id TEXT NOT NULL, action TEXT NOT NULL, previous_date TEXT, previous_court TEXT, previous_start_time TEXT, previous_status TEXT, new_date TEXT, new_court TEXT, new_start_time TEXT, created_at INTEGER NOT NULL, undone_at INTEGER)").run();
+}
+
 async function authorised() {
   const user = await getChatGPTUser();
   const configured = String((env as unknown as { ADMIN_EMAILS?: string }).ADMIN_EMAILS || "");
@@ -96,15 +100,18 @@ async function sendVerificationEmail(booking: BookingForEmail) {
 
 export async function GET() {
   if (!(await authorised())) return json({ error: "Not authorised." }, 403);
+  await ensureBookingHistory();
   const now = Date.now();
   await env.DB.prepare("DELETE FROM bookings WHERE status = ? AND expires_at <= ?").bind("pending_payment", now).run();
   const result = await env.DB.prepare("SELECT id, booking_date, court, start_time, customer_name, phone, email, players, paddle_rental, ball_rental, training_balls, amount, payment_reference, status, created_at FROM bookings ORDER BY booking_date, start_time, court").all();
-  return json({ bookings: result.results });
+  const history = await env.DB.prepare("SELECT id, booking_id, action, previous_date, previous_court, previous_start_time, previous_status, new_date, new_court, new_start_time, created_at FROM booking_events WHERE undone_at IS NULL ORDER BY created_at DESC").all();
+  return json({ bookings: result.results, history: history.results });
 }
 
 export async function PATCH(request: Request) {
   if (!(await authorised())) return json({ error: "Not authorised." }, 403);
   try {
+    await ensureBookingHistory();
     const body = await request.json() as Record<string, unknown>;
     const id = String(body.id || "");
     const action = String(body.action || "");
@@ -130,8 +137,12 @@ export async function PATCH(request: Request) {
     }
 
     if (action === "cancel") {
-      const result = await env.DB.prepare("DELETE FROM bookings WHERE id = ?").bind(id).run();
-      if (!result.meta.changes) return json({ error: "Booking was not found." }, 404);
+      const current = await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<{booking_date:string;court:string;start_time:string;status:string}>();
+      if (!current) return json({ error: "Booking was not found or is already cancelled." }, 404);
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO booking_events (booking_id, action, previous_date, previous_court, previous_start_time, previous_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, "cancel", current.booking_date, current.court, current.start_time, current.status, Date.now()),
+        env.DB.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind("cancelled", id)
+      ]);
       return json({ ok: true });
     }
 
@@ -143,16 +154,19 @@ export async function PATCH(request: Request) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || bookingDate < todayInManila || !["Court 1", "Court 2"].includes(court) || !validTimes.has(startTime)) {
         return json({ error: "Please choose a valid date, court and time." }, 400);
       }
-      const current=await env.DB.prepare("SELECT start_time FROM bookings WHERE id = ?").bind(id).first<{start_time:string}>();
+      const current=await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<{booking_date:string;court:string;start_time:string;status:string}>();
       if(!current)return json({error:"Booking was not found."},404);
       const duration=String(current.start_time).split("|").length;
       const startIndex=orderedTimes.indexOf(startTime);
       const newTimes=orderedTimes.slice(startIndex,startIndex+duration);
       if(newTimes.length!==duration)return json({error:"This booking would extend past closing time."},400);
       const overlapChecks=newTimes.map(()=>"instr('|' || start_time || '|', '|' || ? || '|') > 0").join(" OR ");
-      const conflict=await env.DB.prepare(`SELECT id FROM bookings WHERE booking_date = ? AND court = ? AND id != ? AND (${overlapChecks}) LIMIT 1`).bind(bookingDate,court,id,...newTimes).first();
+      const conflict=await env.DB.prepare(`SELECT id FROM bookings WHERE booking_date = ? AND court = ? AND id != ? AND status != 'cancelled' AND (${overlapChecks}) LIMIT 1`).bind(bookingDate,court,id,...newTimes).first();
       if(conflict)return json({error:"One or more hours in that time range are already reserved."},409);
-      await env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(bookingDate, court, newTimes.join("|"), id).run();
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO booking_events (booking_id, action, previous_date, previous_court, previous_start_time, previous_status, new_date, new_court, new_start_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, "reschedule", current.booking_date, current.court, current.start_time, current.status, bookingDate, court, newTimes.join("|"), Date.now()),
+        env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(bookingDate, court, newTimes.join("|"), id)
+      ]);
       return json({ ok: true });
     }
 
