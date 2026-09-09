@@ -98,6 +98,28 @@ async function sendVerificationEmail(booking: BookingForEmail) {
   }
 }
 
+async function sendBookingChangeEmail(booking: BookingForEmail, kind: "cancelled" | "rescheduled", previous?: { booking_date: string; court: string; start_time: string }) {
+  const apiKey = String((env as unknown as { RESEND_API_KEY?: string }).RESEND_API_KEY || "");
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
+  const isRescheduled = kind === "rescheduled";
+  const title = isRescheduled ? "Your booking has been rescheduled" : "Your booking has been cancelled";
+  const intro = isRescheduled ? "Your Dink Lounge Pickle Court booking has been successfully rescheduled." : "Your Dink Lounge Pickle Court booking has been cancelled.";
+  const previousBlock = isRescheduled && previous ? `<div style="margin:20px 0;padding:18px;background:#f3f6f8;color:#526975"><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;margin-bottom:10px">PREVIOUS SCHEDULE</div><p style="margin:0 0 8px"><strong>Date:</strong> ${escapeHtml(displayBookingDate(previous.booking_date))}</p><p style="margin:0 0 8px"><strong>Time:</strong> ${escapeHtml(displayTimeRange(previous.start_time))}</p><p style="margin:0"><strong>Court:</strong> ${escapeHtml(previous.court)}</p></div>` : "";
+  const scheduleLabel = isRescheduled ? "UPDATED SCHEDULE" : "CANCELLED BOOKING";
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "Dink Lounge Pickle Court <bookings@dinkloungepicklecourt.com>",
+      to: [booking.email],
+      reply_to: "dinklounge@gmail.com",
+      subject: `${isRescheduled ? "Booking rescheduled" : "Booking cancelled"} | Dink Lounge Pickle Court`,
+      html: `<!doctype html><html><body style="margin:0;background:#eef7fb;font-family:Arial,sans-serif;color:#082c41"><div style="max-width:600px;margin:0 auto;padding:32px 18px"><div style="background:#06283d;padding:24px;color:#fff"><div style="color:#27b2ec;font-size:13px;font-weight:700;letter-spacing:2px">DINK LOUNGE PICKLE COURT</div><h1 style="margin:12px 0 0;font-size:28px">${title}</h1></div><div style="background:#fff;padding:28px;border:1px solid #cfe2eb"><p style="font-size:18px;margin-top:0">Hi ${escapeHtml(booking.customer_name)},</p><p>${intro}</p>${previousBlock}<div style="background:#eef7fb;padding:20px;margin:20px 0"><div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#087db2;margin-bottom:10px">${scheduleLabel}</div><p style="margin:0 0 8px"><strong>Date:</strong> ${escapeHtml(displayBookingDate(booking.booking_date))}</p><p style="margin:0 0 8px"><strong>Time:</strong> ${escapeHtml(displayTimeRange(booking.start_time))}</p><p style="margin:0 0 8px"><strong>Court:</strong> ${escapeHtml(booking.court)}</p><p style="margin:0"><strong>Booking reference:</strong> ${escapeHtml(booking.id.slice(0,8).toUpperCase())}</p></div><p>If you have any questions, simply reply to this email or contact us using the numbers below.</p><p style="margin-bottom:0"><strong>Dink Lounge Pickle Court</strong><br>Purok 6, Anahawon, Maramag, Bukidnon<br>0966 168 0764 · 0960 854 0792</p></div></div></body></html>`,
+    }),
+  });
+  if (!response.ok) throw new Error(`Resend returned ${response.status}: ${await response.text()}`);
+}
+
 export async function GET() {
   if (!(await authorised())) return json({ error: "Not authorised." }, 403);
   await ensureBookingHistory();
@@ -137,13 +159,19 @@ export async function PATCH(request: Request) {
     }
 
     if (action === "cancel") {
-      const current = await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<{booking_date:string;court:string;start_time:string;status:string}>();
+      const current = await env.DB.prepare("SELECT id, booking_date, court, start_time, status, customer_name, email, amount, paddle_rental, ball_rental, training_balls FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<BookingForEmail & {status:string}>();
       if (!current) return json({ error: "Booking was not found or is already cancelled." }, 404);
       await env.DB.batch([
         env.DB.prepare("INSERT INTO booking_events (booking_id, action, previous_date, previous_court, previous_start_time, previous_status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(id, "cancel", current.booking_date, current.court, current.start_time, current.status, Date.now()),
         env.DB.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind("cancelled", id)
       ]);
-      return json({ ok: true });
+      try {
+        await sendBookingChangeEmail(current, "cancelled");
+        return json({ ok: true, emailSent: true });
+      } catch (emailError) {
+        console.error("Booking cancelled, but cancellation email failed", emailError);
+        return json({ ok: true, emailSent: false });
+      }
     }
 
     if (action === "reschedule") {
@@ -154,7 +182,7 @@ export async function PATCH(request: Request) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bookingDate) || bookingDate < todayInManila || !["Court 1", "Court 2"].includes(court) || !validTimes.has(startTime)) {
         return json({ error: "Please choose a valid date, court and time." }, 400);
       }
-      const current=await env.DB.prepare("SELECT booking_date, court, start_time, status FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<{booking_date:string;court:string;start_time:string;status:string}>();
+      const current=await env.DB.prepare("SELECT id, booking_date, court, start_time, status, customer_name, email, amount, paddle_rental, ball_rental, training_balls FROM bookings WHERE id = ? AND status != ?").bind(id, "cancelled").first<BookingForEmail & {status:string}>();
       if(!current)return json({error:"Booking was not found."},404);
       const duration=String(current.start_time).split("|").length;
       const startIndex=orderedTimes.indexOf(startTime);
@@ -167,7 +195,14 @@ export async function PATCH(request: Request) {
         env.DB.prepare("INSERT INTO booking_events (booking_id, action, previous_date, previous_court, previous_start_time, previous_status, new_date, new_court, new_start_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").bind(id, "reschedule", current.booking_date, current.court, current.start_time, current.status, bookingDate, court, newTimes.join("|"), Date.now()),
         env.DB.prepare("UPDATE bookings SET booking_date = ?, court = ?, start_time = ? WHERE id = ?").bind(bookingDate, court, newTimes.join("|"), id)
       ]);
-      return json({ ok: true });
+      const updatedBooking: BookingForEmail = { ...current, booking_date: bookingDate, court, start_time: newTimes.join("|") };
+      try {
+        await sendBookingChangeEmail(updatedBooking, "rescheduled", current);
+        return json({ ok: true, emailSent: true });
+      } catch (emailError) {
+        console.error("Booking rescheduled, but reschedule email failed", emailError);
+        return json({ ok: true, emailSent: false });
+      }
     }
 
     if (action === "restore") {
